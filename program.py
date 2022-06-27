@@ -102,45 +102,57 @@ class XmlCounts:
         self.setHeaders()
 
     def getCounts(self):
-        divAndNoteCountsByType = getDivAndNoteCountsByType(self.DivElementObjects)
-        divNoteCountsByTypeInstance = getDivNoteCountsByTypeInstance(self.DivElementObjects)
+        divAndNoteCountsByType = self.getDivAndNoteCountsByType(self.DivElementObjects)
+        divNoteCountsByTypeInstance = self.getDivNoteCountsByTypeInstance(self.DivElementObjects)
         retval = {**divAndNoteCountsByType, **divNoteCountsByTypeInstance}
         return retval
         
     def setHeaders(self):
-        headers = getHeaders()
-        self.Headers = getHeaders2(headers, self.DivElementObjects)
+        headers = self.getHeaders()
+        self.Headers = self.getHeaders2(headers, self.DivElementObjects)
 
-    
-def getDivCountColumnNameFromType(type):
-    return "DivCount_" + type.name.capitalize()
+    def getDivNoteCountsByTypeInstance(divElementObjects):
+        retval = []
+        for divElementObject in divElementObjects:
+            if divElementObject.NoteCount > 0:
+                retval.append((divElementObject.getName(), divElementObject.getNoteCount()))
+        return OrderedDict(retval)
 
-def getNoteCountColumnNameFromType(type):
-    return "NoteCount_" + type.name.capitalize()
+    def getDivAndNoteCountsByType(self, divElementObjects):
+        divTypesAndCounts = []
+        sortedDivElementObjects = sorted(divElementObjects, key=lambda div: div.Type.name)
+        groups = groupby(sortedDivElementObjects, lambda div: div.Type)
+        for key, group in groups:
+            divColName = self.getDivCountColumnNameFromType(key)
+            noteColName = self.getNoteCountColumnNameFromType(key)
+            listOfGroupedDivs = list(group)
+            divTypesAndCounts.append((divColName, len(listOfGroupedDivs)))
+            noteCount = sum(div.NoteCount for div in listOfGroupedDivs)
+            divTypesAndCounts.append((noteColName, noteCount))
+        return OrderedDict(divTypesAndCounts)
 
-def getDivAndNoteCountsByType(divElementObjects):
-    noteTypesAndCounts = []
-    divTypesAndCounts = []
-    sortedDivElementObjects = sorted(divElementObjects, key=lambda div: div.Type.name)
-    groups = groupby(sortedDivElementObjects, lambda div: div.Type)
-    for key, group in groups:
-        colName = getDivCountColumnNameFromType(key)
-        listOfGroupedDivs = list(group)
-        divTypesAndCounts.append((getDivCountColumnNameFromType(key), len(listOfGroupedDivs)))
-        noteCount = sum(div.NoteCount for div in listOfGroupedDivs)
-        divTypesAndCounts.append((getNoteCountColumnNameFromType(key), noteCount))
-    return OrderedDict(divTypesAndCounts)
+    def getDivCountColumnNameFromType(type):
+        return "DivCount_" + type.name.capitalize()
 
-def getDivNoteCountsByTypeInstance(divElementObjects):
-    retval = []
-    for divElementObject in divElementObjects:
-        if divElementObject.NoteCount > 0:
-            retval.append((divElementObject.getName(), divElementObject.getNoteCount()))
-    return OrderedDict(retval)
+    def getNoteCountColumnNameFromType(type):
+        return "NoteCount_" + type.name.capitalize()
 
-def addDivNoteCounts(x, y):
-    return x.NoteCount + y.NoteCount
+    def getHeaders():
+        cols = ["Title", "Date", "Volume", "Issue", "TotalDivCount", "TotalNoteCount"]
+        for divType in DivTypeEnum:
+            cols.append("DivCount_" + divType.name.capitalize())
+        for divType in DivTypeEnum:
+            cols.append("NoteCount_" + divType.name.capitalize())
+        return cols
 
+    def getHeaders2(existingHeaders, divs):
+        retval = []
+        for div in divs:
+            if div.NoteCount > 0:
+                existingHeaders.append(div.getName())
+        return existingHeaders
+
+# gets file paths for all xml files in the working directory
 def getXmlFilePathsFromCurrentDirectory():
     xmlFilePaths = []
     currentDirectory = os.getcwd()
@@ -151,6 +163,7 @@ def getXmlFilePathsFromCurrentDirectory():
             xmlFilePaths.append(filePath)
     return xmlFilePaths
 
+# parses list of xml files into objects easier to work with 
 def parseXmlFiles(xmlFilePaths):
     xmlTrees = []
     for xmlFilePath in xmlFilePaths:
@@ -159,40 +172,52 @@ def parseXmlFiles(xmlFilePaths):
         removeNamespaceFromTagNames(xmlTree)
     return xmlTrees
 
+# if xml file has namespace defined, it is included in tagnames on parse
+# remove it from all tagnames for provided xml tree
 def removeNamespaceFromTagNames(xmlTree):
     for element in xmlTree.iter():
         prefix, has_namespace, postfix = element.tag.partition("}")
         if has_namespace:
             element.tag = postfix
 
+# gets all div counts by type
+# gets all note counts by type
+# gets total div and note counts
+# gets div note counts by instance and type
+# returns all in a list per xml tree provided
+def getDivAndNoteCounts(xmlTrees):
+    xmlCountsList = []
+    for xmlTree in xmlTrees:
+        divs = getAllDivElementObjectsFromXmlTree(xmlTree)
+        notes = getAllNotesFromXmlTree(xmlTree)
+        totalNotesCount = len(notes)
+        xmlCounts = XmlCounts(divs, totalNotesCount)
+        xmlCountsList.append(xmlCounts)
+    return xmlCountsList
+
+# gets div counts by type
+def getAllDivElementObjectsFromXmlTree(xmlTree):
+    divs = getAllDivsFromXmlTree(xmlTree)
+    divElementObjects = transformDivsToDivElementObjects(divs)
+    return divElementObjects
+
+# get all divs from provided xml tree
 def getAllDivsFromXmlTree(xmlTree):
     return getElementsFromXmlTreeWithGivenTagName(xmlTree, "div")
 
+# gets all notes from provided xml tree
 def getAllNotesFromXmlTree(xmlTree):
     return getElementsFromXmlTreeWithGivenTagName(xmlTree, "note")
 
+# gets all elements of given tagname from provided xml tree
 def getElementsFromXmlTreeWithGivenTagName(xmlTree, tagName):
     tags = []
     for element in xmlTree.iter(tagName):
         tags.append(element)
     return tags
 
-
-
-def groupList(lst):
-    res = [(el, lst.count(el)) for el in lst]
-    return OrderedDict(res)
-
-def getNotesInDivs(divs):
-    noteList = []
-    for div in divs: 
-        for element in div.iter():
-            if element.tag == "note":
-                noteList.append(element)
-    return noteList
-        
-
-
+# creates list of DivElement objects (class defined above) from lsit of divs
+# DivElement contains Type, Name, Instance, NoteCount
 def transformDivsToDivElementObjects(divs):
     divElementObjects = []
     for div in divs:
@@ -203,56 +228,26 @@ def transformDivsToDivElementObjects(divs):
         divElementObjects.append(divElement)
     return divElementObjects
 
-def getAllDivElementObjectsFromXmlTree(xmlTree):
-    divs = getAllDivsFromXmlTree(xmlTree)
-    divElementObjects = transformDivsToDivElementObjects(divs)
-    return divElementObjects
-
-def getDivAndNoteCounts(xmlTrees):
-    xmlCountsList = []
-    for xmlTree in xmlTrees:
-        divs = getAllDivElementObjectsFromXmlTree(xmlTree)
-        notes = getAllNotesFromXmlTree(xmlTree)
-        totalNotesCount = len(notes)
-
-        xmlCounts = XmlCounts(divs, totalNotesCount)
-        xmlCountsList.append(xmlCounts)
-
-    return xmlCountsList
-
-
-def writeCsvTest(xmlCountsList):
+# writes all counts provided in xmlCountsList to csv file
+def writeCsv(xmlCountsList):
     headers = getHeaders()
     xmlCountsHeaders = [xmlCounts.Headers for xmlCounts in xmlCountsList]
     xmlCountsHeaders2 = list(itertools.chain.from_iterable(xmlCountsHeaders))
     headers = groupList(xmlCountsHeaders2)
 
-    with open('csv_file.csv', 'w', newline='') as csvFile:
+    with open('counts.csv', 'w', newline='') as csvFile:
         writer = csv.DictWriter(csvFile, fieldnames=headers)
         writer.writeheader();
         for xmlCounts in xmlCountsList:
             counts = xmlCounts.getCounts()
             writer.writerow(counts)
-        
 
-def getHeaders():
-    cols = ["Title", "Date", "Volume", "Issue", "TotalDivCount", "TotalNoteCount"]
-    for divType in DivTypeEnum:
-        cols.append("DivCount_" + divType.name.capitalize())
-    for divType in DivTypeEnum:
-        cols.append("NoteCount_" + divType.name.capitalize())
-    return cols
-
-def getHeaders2(existingHeaders, divs):
-    retval = []
-    for div in divs:
-        if div.NoteCount > 0:
-            existingHeaders.append(div.getName())
-    return existingHeaders
+def groupList(lst):
+    res = [(el, lst.count(el)) for el in lst]
+    return OrderedDict(res)
 
 
 def main():
-    # test()
     # gets the file paths for all xml files in the directory and puts them in a list
     # returned list looks like below, where directory run against is "C:/exampleDirectory"
     # ["C:/exampleDirectory/examplefile1.xml", "C:/exampleDirectory/examplefile2.xml"]
@@ -261,20 +256,10 @@ def main():
     # parses the xml files and returns a list of tree objects
     # this allows more easy interaction with the contents of the files in code
     xmlTrees = parseXmlFiles(xmlFilePaths)
-
     xmlCountsList = getDivAndNoteCounts(xmlTrees)
-    writeCsvTest(xmlCountsList)
-
-
+    writeCsv(xmlCountsList)
 
 main()
-
-
-
-#treeList = getTreeListFromXmlFiles()
-#tagFrequencyList = getTagFrequencyList(treeList)
-#writeTagFrequencyListToCsvFile(tagFrequencyList)
-
 
    
 #total div count
