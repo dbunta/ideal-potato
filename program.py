@@ -88,54 +88,10 @@ class DivElement:
 
     def getName(self):
         return "DivNoteCount_" + self.Type.name.capitalize() + "_" + str(self.Instance)
-        # if self.Instance and self.Instance > 1:
-        #     return name + str(self.Instance)
-        # return name
 
 class XmlCounts:
     Headers: list = None
     DivElementObjects: list = None
-
-    Title: str = None
-    Date: str = None
-    Volume: str = None
-    Issue: str = None
-    TotalDivCount: int = None
-    TotalNoteCount: int = None
-    MastheadCount: int = None
-    IssueCount: int = None
-    SectionCount: int = None
-    SubsectionCount: int = None
-    ArticleCount: int = None
-    ItemCount: int = None
-    AdvertCount: int = None
-    NameplateCount: int = None
-    FeatureCount: int = None
-    FrontMatterCount: int = None
-    BackMatterCount: int = None
-    SupplementCount: int = None
-    IndexCount: int = None
-    BulletinCount: int = None
-    AppendixCount: int = None
-    ObservationsCount: int = None
-    TableOfContentsCount: int = None
-    MastheadNoteCount: int = None
-    IssueNoteCount: int = None
-    SectionNoteCount: int = None
-    SubsectionNoteCount: int = None
-    ArticleNoteCount: int = None
-    ItemNoteCount: int = None
-    AdvertNoteCount: int = None
-    NameplateNoteCount: int = None
-    FeatureNoteCount: int = None
-    FrontMatterNoteCount: int = None
-    BackMatterNoteCount: int = None
-    SupplementNoteCount: int = None
-    IndexNoteCount: int = None
-    BulletinNoteCount: int = None
-    AppendixNoteCount: int = None
-    ObservationsNoteCount: int = None
-    TableOfContentsNoteCount: int = None
     Counts: list = None
     
     def __init__(self, divElementObjects, totalNoteCount) -> None:
@@ -150,25 +106,10 @@ class XmlCounts:
         divNoteCountsByTypeInstance = getDivNoteCountsByTypeInstance(self.DivElementObjects)
         retval = {**divAndNoteCountsByType, **divNoteCountsByTypeInstance}
         return retval
-
-    def setCounts(self):
-        divAndNoteCountsByType = getDivAndNoteCountsByType(self.DivElementObjects)
-        divNoteCountsByTypeInstance = getDivNoteCountsByTypeInstance(self.DivElementObjects)
-        # to write:
-        # need list of all headers (done)
-        # need all counts in dictionary of header name and count (not done)
-        # divCountsByType = divAndNoteCountsByType["DivCountsByType"]
-        # noteCountsByType = divAndNoteCountsByType["NoteCountsByType"]
         
     def setHeaders(self):
         headers = getHeaders()
         self.Headers = getHeaders2(headers, self.DivElementObjects)
-
-    # def getHeaders(self):
-    #     for field in CsvWriteFields:
-    #         print(field.name)
-    #     for divElementObject in self.DivElementObjects:
-    #         print(divElementObject.Type)
 
     
 def getDivCountColumnNameFromType(type):
@@ -177,7 +118,6 @@ def getDivCountColumnNameFromType(type):
 def getNoteCountColumnNameFromType(type):
     return "NoteCount_" + type.name.capitalize()
 
-# def groupDivElementObjectsByType(divElementObjects):
 def getDivAndNoteCountsByType(divElementObjects):
     noteTypesAndCounts = []
     divTypesAndCounts = []
@@ -186,15 +126,10 @@ def getDivAndNoteCountsByType(divElementObjects):
     for key, group in groups:
         colName = getDivCountColumnNameFromType(key)
         listOfGroupedDivs = list(group)
-        # 
-        # divTypesAndCounts.append((colName, len(list(group))))
         divTypesAndCounts.append((getDivCountColumnNameFromType(key), len(listOfGroupedDivs)))
         noteCount = sum(div.NoteCount for div in listOfGroupedDivs)
         divTypesAndCounts.append((getNoteCountColumnNameFromType(key), noteCount))
-        # divTypesAndCounts.append((colName, noteCount))
-        # noteTypesAndCounts.append((colName, noteCount))
     return OrderedDict(divTypesAndCounts)
-    # return {"DivCountsByType":OrderedDict(divTypesAndCounts), "NoteCountsByType": OrderedDict(noteTypesAndCounts)}
 
 def getDivNoteCountsByTypeInstance(divElementObjects):
     retval = []
@@ -276,10 +211,7 @@ def getAllDivElementObjectsFromXmlTree(xmlTree):
 def getDivAndNoteCounts(xmlTrees):
     xmlCountsList = []
     for xmlTree in xmlTrees:
-        # divs = getAllDivsFromXmlTree(xmlTree)
-        # divElementObjects = transformDivsToDivElementObjects(divs)
         divs = getAllDivElementObjectsFromXmlTree(xmlTree)
-        #count of all divs by type
         notes = getAllNotesFromXmlTree(xmlTree)
         totalNotesCount = len(notes)
 
@@ -288,14 +220,9 @@ def getDivAndNoteCounts(xmlTrees):
 
     return xmlCountsList
 
-        
-        # divCountsByType = divAndNoteCountsByType["DivCountsByType"]
-        # noteCountsByType = divAndNoteCountsByType["NoteCountsByType"]
-        #iterate through divs to get instanced counts
 
 def writeCsvTest(xmlCountsList):
     headers = getHeaders()
-    #list(itertools.chain.from_iterable(lists)
     xmlCountsHeaders = [xmlCounts.Headers for xmlCounts in xmlCountsList]
     xmlCountsHeaders2 = list(itertools.chain.from_iterable(xmlCountsHeaders))
     headers = groupList(xmlCountsHeaders2)
@@ -306,7 +233,6 @@ def writeCsvTest(xmlCountsList):
         for xmlCounts in xmlCountsList:
             counts = xmlCounts.getCounts()
             writer.writerow(counts)
-    # headers = [headers, headers2]
         
 
 def getHeaders():
@@ -324,31 +250,6 @@ def getHeaders2(existingHeaders, divs):
             existingHeaders.append(div.getName())
     return existingHeaders
 
-def test2():
-    with open('csv_file.csv', 'w', newline='') as csvFile:
-        # fieldNames = getHeaders1()
-        writer = csv.DictWriter(csvFile, fieldnames=fieldNames)
-        writer.writeheader();
-        writer.writerow()
-
-def writeCsvFile():
-    countsDict = [
-        {
-            "Title": "TEst1",
-            "TotalDivCount": 3
-        },
-        {
-            "Title": "applejacks",
-            "NameplateDivCount": 13
-        }
-    ]
-    with open('csv_file', 'w', newline='') as csvFile:
-        fieldNames = getHeaders()
-        fieldNames = getHeaders2(fieldNames)
-        writer = csv.DictWriter(csvFile, fieldnames=fieldNames)
-        writer.writeheader();
-        for tagFrequency in countsDict:
-            writer.writerow(tagFrequency)
 
 def main():
     # test()
@@ -396,138 +297,3 @@ main()
 
 #count of note tags per article div instance
 #note = footnote
-
-
-
-
-
-
-# #gets all tagnames from xml tree
-# def getAllTagInstances(tree):
-#     tagList = []
-#     for el in tree.iter():
-#         prefix, has_namespace, postfix = el.tag.partition('}')
-#         if has_namespace:
-#             el.tag = postfix
-#         tagList.append(el.tag)
-#     return tagList
-
-# def getAllTagsOfNameAndType(xml, name, type):
-#     taglist = []
-#     for el in xml.iter("div"):
-#         prefix, has_namespace, postfix = el.tag.partition("}")
-#         if has_namespace:
-#             el.tag = postfix
-#         taglist.append(el)
-#     return taglist
-
-# def getFirstTagText(tagName, tree):
-#     for el in tree.iter():
-#         if el.tag == tagName:
-#                 return el.text
-#         # prefix, has_namespace, postfix = el.tag.partition('}')
-#         # if has_namespace:
-#         #     if postfix == tagName:
-#         #         return el.text
-
-# def getTagFrequency(tree):
-#     tags = getAllTagInstances(tree)
-#     return groupList(tags)
-
-def writeCsvFile(tagFrequency):
-    with open('csv_file', 'w', newline='') as csvFile:
-        fieldNames = list(tagFrequency.keys())
-        writer = csv.DictWriter(csvFile, fieldnames=fieldNames)
-        writer.writeheader();
-        writer.writerow(tagFrequency)
-
-# def getDistinctTagNames(tagFrequencyList):
-#     tagNames = []
-#     for tagFrequency in tagFrequencyList:
-#         tagNames.extend(tagFrequency.keys())
-#     return set(tagNames)
-
-
-# def writeTagFrequencyListToCsvFile(tagFrequencyList):
-#     distinctTagNames = getDistinctTagNames(tagFrequencyList)
-#     with open('csv_file', 'w', newline='') as csvFile:
-#         fieldNames = list(distinctTagNames)
-#         writer = csv.DictWriter(csvFile, fieldnames=fieldNames)
-#         writer.writeheader();
-#         for tagFrequency in tagFrequencyList:
-#             writer.writerow(tagFrequency)
-
-
-
-# def getTagFrequencyList(treelist):
-#     tagFrequencyList = []
-#     for tree in treeList:
-#         tagFrequency = getTagFrequency(tree)
-#         title = getFirstTagText('title', tree)
-#         date = getFirstTagText('date', tree)
-#         tagFrequency['ArticleName']=getFirstTagText('title', tree)
-#         tagFrequency['ArticleDate']=getFirstTagText('date', tree)
-#         tagFrequencyList.append(tagFrequency)
-#     return tagFrequencyList
-
-
-# def getTreeListFromXmlFiles():
-#     treeList = []
-#     for file in os.listdir(os.getcwd()):
-#         if file.endswith(".xml"):
-#             treeList.append(et.parse(os.path.join(os.getcwd(), file)))
-#     return treeList
-
-# def getTypeCountsFromElements(elements):
-#     elementTypes = getTypeValuesFromElements(elements)
-#     typeCounts = groupList(elementTypes)
-#     return typeCounts
-
-# def getTypeValuesFromElements(elements):
-#     elementTypes = []
-#     for element in elements:
-#         elementType = element.get("type")
-#         elementTypes.append(elementType)
-#     return elementTypes
-
-#class CsvWriteFields(Enum):
-#     Title = 0
-#     Date = 1
-#     Volume = 2
-#     Issue = 3
-#     TotalDivCount = 4
-#     TotalNoteCount = 5
-#     MastheadCount = 6
-#     IssueCount = 7
-#     SectionCount = 8
-#     SubsectionCount = 9
-#     ArticleCount = 10
-#     ItemCount = 11
-#     AdvertCount = 12
-#     NameplateCount = 13
-#     FeatureCount = 14
-#     FrontMatterCount = 15
-#     BackMatterCount = 16
-#     SupplementCount = 17
-#     IndexCount = 18
-#     BulletinCount = 19
-#     AppendixCount = 20
-#     ObservationsCount = 21
-#     TableOfContentsCount = 22
-#     MastheadNoteCount = 23
-#     IssueNoteCount = 24
-#     SectionNoteCount = 25
-#     SubsectionNoteCount = 26
-#     ArticleNoteCount = 27
-#     ItemNoteCount = 28
-#     AdvertNoteCount = 29
-#     NameplateNoteCount = 30
-#     FeatureNoteCount = 31
-#     FrontMatterNoteCount = 32
-#     BackMatterNoteCount = 33
-#     SupplementNoteCount = 34
-#     IndexNoteCount = 35
-#     BulletinNoteCount = 36
-#     AppendixNoteCount = 37
-#     ObservationsNoteCount = 38
-#     TableOfContentsNoteCount = 39
