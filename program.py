@@ -1,16 +1,12 @@
-from audioop import add
 from enum import Enum
-from asyncore import write
 from collections import OrderedDict
-from ctypes.wintypes import tagMSG
-from doctest import testfile
-from functools import reduce
+from fileinput import filename
 from itertools import groupby
 import itertools
+from wsgiref import headers
 import xml.etree.ElementTree as et
 import csv
 import os
-import re
 
 # group by div type to get total count per div type
 # put in dict with type and count
@@ -33,25 +29,53 @@ import re
 # if 0 - append 1
 # if 1 - append 2
 # etc
-#
+
+
 
 # common properties of Xml doc 
 class CommonXmlInfo:
+    FileName: str = None
     Title: str = None
     Date: str = None
     Volume: str = None
     Issue: str = None
 
-    def __init__(self, xmlTree) -> None:
-        self.Title = self.getElementTextForPath(xmlTree, 'teiHeader/fileDesc/sourceDesc/bibl/ref/title');
+    def __init__(self, xmlTree, fileName) -> None:
+        self.FileName = fileName
+        self.Title = self.getElementTextForPath(xmlTree, 'teiHeader/fileDesc/sourceDesc/bibl/ref/title', 'teiHeader/fileDesc/sourceDesc/bibl/title');
         self.Date = self.getElementTextForPath(xmlTree, 'teiHeader/fileDesc/sourceDesc/bibl/date');
         self.Volume = self.getElementTextForPath(xmlTree, "teiHeader/fileDesc/sourceDesc/bibl/biblScope[@unit='volume']");
         self.Issue = self.getElementTextForPath(xmlTree, "teiHeader/fileDesc/sourceDesc/bibl/biblScope[@unit='issue']");
 
-    def getElementTextForPath(self, xmlTree, path):
-        text = xmlTree.find(path).text
+    def getTitle(self, xmlTree):
+        # the title tag can be nested in ref tag
+        # check if title is nested, if so use that
+        pathWithRef = 'teiHeader/fileDesc/sourceDesc/bibl/ref/title'
+        pathNoRef = 'teiHeader/fileDesc/sourceDesc/bibl/title'
+        elemWithRefPath = xmlTree.find(pathWithRef)
+        if (elemWithRefPath != None):
+            return elemWithRefPath.text
+        return xmlTree.find(pathNoRef).text
+
+    def getElementTextForPath(self, xmlTree, path, backupPath = None):
+        elem = xmlTree.find(path)
+        if elem == None and backupPath != None:
+            elem = xmlTree.find(backupPath)
+        text = elem.text
         return " ".join(text.split())
         
+# enum to store all column names or column name prefixes
+class ColumnNames(str, Enum):
+    FileName = "File Name"
+    Title = "Title"
+    Date = "Date"
+    Volume = "Volume"
+    Issue = "Issue"
+    TotalDivCount = "TotalDivCount"
+    TotalNoteCount = "TotalNoteCount"
+    DivCountPrefix = "DivCount_"
+    NoteCountPrefix = "NoteCount_"
+    DivNoteCountPrefix = "DivNoteCount_"
 
 # enum for possible div types
 class DivTypeEnum(Enum):
@@ -111,7 +135,7 @@ class DivElement:
 
     def getName(self):
         if self.NoteCount > 0:
-            return "DivNoteCount_" + self.Type.name.capitalize() + "_" + str(self.Instance)
+            return ColumnNames.DivNoteCountPrefix + self.Type.name.capitalize() + "_" + str(self.Instance)
         return None
 
     def setName(self):
@@ -135,11 +159,13 @@ class XmlCounts:
         
 
     def getHeaders(self):
-        headers = ["Title", "Date", "Volume", "Issue", "TotalDivCount", "TotalNoteCount"]
+        # headers = ["FileName", "Title", "Date", "Volume", "Issue", "TotalDivCount", "TotalNoteCount"]
+        headers = []
         for divType in DivTypeEnum:
-            headers.append("DivCount_" + divType.name.capitalize())
+            headers.append(ColumnNames.DivCountPrefix + divType.name.capitalize())
         for divType in DivTypeEnum:
-            headers.append("NoteCount_" + divType.name.capitalize())
+            headers.append(ColumnNames.NoteCountPrefix + divType.name.capitalize())
+        divNoteCountHeaders = []
         for div in self.DivElementObjects:
             if div.NoteCount > 0:
                 headers.append(div.Name)
@@ -154,12 +180,13 @@ class XmlCounts:
 
     def getCommonCounts(self):
         commonCounts = [
-            ("Title", self.CommonXmlInfo.Title),
-            ("Date", self.CommonXmlInfo.Date),
-            ("Volume", self.CommonXmlInfo.Volume),
-            ("Issue", self.CommonXmlInfo.Issue),
-            ("TotalDivCount", self.TotalDivCount),
-            ("TotalNoteCount", self.TotalNoteCount)
+            (ColumnNames.FileName, self.CommonXmlInfo.FileName),
+            (ColumnNames.Title, self.CommonXmlInfo.Title),
+            (ColumnNames.Date, self.CommonXmlInfo.Date),
+            (ColumnNames.Volume, self.CommonXmlInfo.Volume),
+            (ColumnNames.Issue, self.CommonXmlInfo.Issue),
+            (ColumnNames.TotalDivCount, self.TotalDivCount),
+            (ColumnNames.TotalNoteCount, self.TotalNoteCount)
         ]
         return OrderedDict(commonCounts);
 
@@ -185,30 +212,33 @@ class XmlCounts:
         return OrderedDict(divTypesAndCounts)
 
     def getDivCountColumnNameFromType(self, type):
-        return "DivCount_" + type.name.capitalize()
+        return ColumnNames.DivCountPrefix + type.name.capitalize()
 
     def getNoteCountColumnNameFromType(self, type):
-        return "NoteCount_" + type.name.capitalize()
+        return ColumnNames.NoteCountPrefix + type.name.capitalize()
 
 # gets file paths for all xml files in the working directory
-def getXmlFilePathsFromCurrentDirectory():
-    xmlFilePaths = []
+# return tuple<string, string>(fileName, filePath)
+def getXmlFileNamesAndPathsFromCurrentDirectory():
+    xmlFileNamesAndPaths = []
     currentDirectory = os.getcwd()
     allFileNamesInWorkingDirectory = os.listdir(currentDirectory)
     for fileName in allFileNamesInWorkingDirectory:
         if fileName.endswith(".xml"):
             filePath = os.path.join(currentDirectory, fileName)
-            xmlFilePaths.append(filePath)
-    return xmlFilePaths
+            xmlFileNamesAndPaths.append((fileName, filePath))
+    return xmlFileNamesAndPaths
 
 # parses list of xml files into objects easier to work with 
-def parseXmlFiles(xmlFilePaths):
-    xmlTrees = []
-    for xmlFilePath in xmlFilePaths:
-        xmlTree = et.parse(xmlFilePath)
-        xmlTrees.append(xmlTree)
+def parseXmlFiles(xmlFileInfos):
+    xmlNamesAndTrees = []
+    for xmlFileInfo in xmlFileInfos:
+        fileName = xmlFileInfo[0]
+        filePath = xmlFileInfo[1]
+        xmlTree = et.parse(filePath)
         removeNamespaceFromTagNames(xmlTree)
-    return xmlTrees
+        xmlNamesAndTrees.append((fileName, xmlTree))
+    return xmlNamesAndTrees
 
 # if xml file has namespace defined, it is included in tagnames on parse
 # remove it from all tagnames for provided xml tree
@@ -223,13 +253,15 @@ def removeNamespaceFromTagNames(xmlTree):
 # gets total div and note counts
 # gets div note counts by instance and type
 # returns all in a list per xml tree provided
-def getDivAndNoteCounts(xmlTrees):
+def getDivAndNoteCounts(xmlNamesAndTrees):
     xmlCountsList = []
-    for xmlTree in xmlTrees:
+    for xmlNameAndTree in xmlNamesAndTrees:
+        fileName = xmlNameAndTree[0]
+        xmlTree = xmlNameAndTree[1]
         divs = getAllDivElementObjectsFromXmlTree(xmlTree)
         notes = getAllNotesFromXmlTree(xmlTree)
         totalNotesCount = len(notes)
-        commonXmlInfo = CommonXmlInfo(xmlTree)
+        commonXmlInfo = CommonXmlInfo(xmlTree, fileName)
         xmlCounts = XmlCounts(divs, commonXmlInfo, totalNotesCount)
         xmlCountsList.append(xmlCounts)
     return xmlCountsList
@@ -270,16 +302,22 @@ def transformDivsToDivElementObjects(divs):
 
 # writes all counts provided in xmlCountsList to csv file
 def writeCsv(xmlCountsList):
-    xmlCountsListHeadersLists = [xmlCounts.Headers for xmlCounts in xmlCountsList]
-    xmlCountsListHeaders = list(itertools.chain.from_iterable(xmlCountsListHeadersLists))
-    distinctHeaders = groupList(xmlCountsListHeaders)
-
+    headers = getHeadersForCsv(xmlCountsList)
     with open('new_counts.csv', 'w', newline='') as csvFile:
-        writer = csv.DictWriter(csvFile, fieldnames=distinctHeaders)
+        writer = csv.DictWriter(csvFile, fieldnames=headers)
         writer.writeheader();
         for xmlCounts in xmlCountsList:
             counts = xmlCounts.Counts
             writer.writerow(counts)
+
+def getHeadersForCsv(xmlCountsList):
+    headers = [ColumnNames.FileName, ColumnNames.Title, ColumnNames.Date, ColumnNames.Volume, ColumnNames.Issue, ColumnNames.TotalDivCount, ColumnNames.TotalNoteCount]
+    xmlCountsListHeadersLists = [xmlCounts.Headers for xmlCounts in xmlCountsList]
+    xmlCountsListHeaders = list(itertools.chain.from_iterable(xmlCountsListHeadersLists))
+    distinctValueHeaders = list(groupList(xmlCountsListHeaders))
+    distinctValueHeaders.sort()
+    headers.extend(distinctValueHeaders)
+    return headers
 
 # gets distinct list from simple list
 def groupList(lst):
@@ -288,37 +326,15 @@ def groupList(lst):
 
 
 def main():
-    # gets the file paths for all xml files in the directory and puts them in a list
+    # gets the file names and paths for all xml files in the directory and puts them in a list
     # returned list looks like below, where directory run against is "C:/exampleDirectory"
     # ["C:/exampleDirectory/examplefile1.xml", "C:/exampleDirectory/examplefile2.xml"]
-    xmlFilePaths = getXmlFilePathsFromCurrentDirectory() 
+    xmlFileNamesAndPaths = getXmlFileNamesAndPathsFromCurrentDirectory() 
 
     # parses the xml files and returns a list of tree objects
     # this allows more easy interaction with the contents of the files in code
-    xmlTrees = parseXmlFiles(xmlFilePaths)
-    xmlCountsList = getDivAndNoteCounts(xmlTrees)
+    xmlNamesAndTrees = parseXmlFiles(xmlFileNamesAndPaths)
+    xmlCountsList = getDivAndNoteCounts(xmlNamesAndTrees)
     writeCsv(xmlCountsList)
 
 main()
-
-   
-#total div count
-#counts of divs per type
-
-#total note count
-#counts of note within each div type
-#counts note per div type 
-
-#<div type=article>
-    #<note>
-#<div type=article>
-    #<note>
-
- #article div 1, article div 2
- #1, 1
-
-#inside <bibl>
-#get title, date, volume issue
-
-#count of note tags per article div instance
-#note = footnote
