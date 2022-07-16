@@ -19,6 +19,7 @@ instanced note tags by parents div tag types.
 </div>
 ```
 ### Sample Results
+Total Counts
 <table>
     <tr>
         <th>TotalDivCount</th>
@@ -30,6 +31,7 @@ instanced note tags by parents div tag types.
     </tr>
 </table>
 
+Total ```<div>``` Counts by Type
 <table>
     <tr>
         <th>DivsOfType_Section</th>
@@ -41,17 +43,32 @@ instanced note tags by parents div tag types.
     </tr>
 </table>
 
+Total ```<note>``` Counts by Parent Div Type
+<table>
+    <tr>
+        <th>NotesInDivOfType_Section</th>
+        <th>NotesInDivOfType_Article</th>
+    </tr>
+    <tr>
+        <td>3</td>
+        <td>3</td>
+    </tr>
+</table>
 
+Total ```<note>``` Counts by Parent Div Type and Instance
+<table>
+    <tr>
+        <th>NotesInDivOfTypeAndInstance_Section_1</th>
+        <th>NotesInDivOfTypeAndInstance_Article_1</th>
+        <th>NotesInDivOfTypeAndInstance_Article_2</th>
+    </tr>
+    <tr>
+        <td>3</td>
+        <td>2</td>
+        <td>1</td>
+    </tr>
+</table>
 
-NotesInDivOfType_Section:   3
-</br>
-NotesInDivOfType_Article:   3
-
-NotesInDivOfTypeAndInstance_Section_1:  3
-</br>
-NotesInDivOfTypeAndInstance_Article_1:  2
-</br>
-NotesInDivOfTypeAndInstance_Article_2:  1
 
 
 ## Optional Arguments
