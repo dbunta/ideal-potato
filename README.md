@@ -7,15 +7,15 @@ instanced note tags by parents div tag types.
 
  ## E.g.
  ### Sample XML
- > <div type="section">
- >    <div type="article">
- >        <note></note>
- >        <note></note>
- >    </div>
- >    <div type="article">
- >        <note></note>
- >    <div>
- > </div>
+`<div type="section">
+    <div type="article">
+        <note></note>
+        <note></note>
+    </div>
+    <div type="article">
+        <note></note>
+    </div>
+</div>`
 
 ### Sample Results
 TotalDivCount: 3
