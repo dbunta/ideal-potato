@@ -20,10 +20,10 @@ instanced note tags by parents div tag types.
 ```
 ### Sample Results
 <table>
-    <th>
-        <td>TotalDivCount</td>
-        <td>TotalNoteCount</td>
-    </th>
+    <tr>
+        <th>TotalDivCount</th>
+        <th>TotalNoteCount</th>
+    </tr>
     <tr>
         <td>3</td>
         <td>3</td>
@@ -31,10 +31,10 @@ instanced note tags by parents div tag types.
 </table>
 
 <table>
-    <th>
-        <td>DivsOfType_Section</td>
-        <td>DivsOfType_Article</td>
-    </th>
+    <tr>
+        <th>DivsOfType_Section</th>
+        <th>DivsOfType_Article</th>
+    </tr>
     <tr>
         <td>1</td>
         <td>2</td>
