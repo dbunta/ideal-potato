@@ -5,6 +5,19 @@ Groups on defined set of div types
 and return counts of div tags by type, note tags by parent div tag types,
 instanced note tags by parents div tag types.
 
+## Optional Arguments
+-s --Source
+</br>
+source directory in which the XML files are located
+</br>
+If no source argument is specified, the script will look in the directory where it is located for XML files 
+
+-f --Filename
+</br>
+output filename (CSV file)
+</br>
+If no filename argument is specified, the script has a default filename
+
  ## E.g.
  ### Sample XML
 ```
@@ -68,20 +81,3 @@ Total ```<note>``` Counts by Parent Div Type and Instance
         <td>1</td>
     </tr>
 </table>
-
-
-
-## Optional Arguments
-
--s --Source
-</br>
-source directory in which the XML files are located
-</br>
-If no source argument is specified, the script will look in the directory where it is located for XML files 
-
--f --Filename
-</br>
-output filename (CSV file)
-</br>
-If no filename argument is specified, the script has a default filename
-
