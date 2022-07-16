@@ -20,26 +20,22 @@ instanced note tags by parents div tag types.
 ```
 ### Sample Results
 TotalDivCount: 3
-
+</br>
 TotalNoteCount: 3
-
 
 DivsOfType_Section: 1
 
 DivsOfType_Article: 2
 
-
 NotesInDivOfType_Section: 3
 
 NotesInDivOfType_Article: 3
-
 
 NotesInDivOfTypeAndInstance_Section_1: 3
 
 NotesInDivOfTypeAndInstance_Article_1: 2
 
 NotesInDivOfTypeAndInstance_Article_2: 1
-
 
 
 ## Optional Arguments
