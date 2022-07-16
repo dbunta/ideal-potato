@@ -49,9 +49,9 @@ class ColumnNames(str, Enum):
     Issue = "Issue"
     TotalDivCount = "TotalDivCount"
     TotalNoteCount = "TotalNoteCount"
-    DivCountPrefix = "DivCount_"
-    NoteCountPrefix = "NoteCount_"
-    DivNoteCountPrefix = "DivNoteCount_"
+    DivCountPrefix = "DivsOfType_"
+    NoteCountPrefix = "NotesInDivOfType_"
+    DivNoteCountPrefix = "NotesInDivOfTypeAndInstance_"
 
 # enum for possible div types
 class DivTypeEnum(Enum):
