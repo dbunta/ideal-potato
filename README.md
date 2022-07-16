@@ -19,7 +19,7 @@ instanced note tags by parents div tag types.
 </div>
 ```
 ### Sample Results
-TotalDivCount: 3
+TotalDivCount:  3
 </br>
 TotalNoteCount: 3
 
@@ -27,15 +27,15 @@ DivsOfType_Section: 1
 </br>
 DivsOfType_Article: 2
 
-NotesInDivOfType_Section: 3
+NotesInDivOfType_Section:   3
 </br>
-NotesInDivOfType_Article: 3
+NotesInDivOfType_Article:   3
 
-NotesInDivOfTypeAndInstance_Section_1: 3
+NotesInDivOfTypeAndInstance_Section_1:  3
 </br>
-NotesInDivOfTypeAndInstance_Article_1: 2
+NotesInDivOfTypeAndInstance_Article_1:  2
 </br>
-NotesInDivOfTypeAndInstance_Article_2: 1
+NotesInDivOfTypeAndInstance_Article_2:  1
 
 
 ## Optional Arguments
