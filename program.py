@@ -1,36 +1,12 @@
 from enum import Enum
 from collections import OrderedDict
-from fileinput import filename
 from itertools import groupby
 import itertools
-from wsgiref import headers
 import xml.etree.ElementTree as et
 import csv
 import os
-
-# group by div type to get total count per div type
-# put in dict with type and count
-# loop through divtypeenum
-# if divtypeenum.type in dict
-# print that count
-# otherwise print 0
-# loop through divtypeenum twice
-# counts of divs per type
-# counts of notes per div type
-# finally,
-# loop through non-grouped list of divs
-# track occurrences of each type
-# print type name + occurrence and note count
-# possibility for tracking occurrences:
-# add col name as looping
-# if col name already in collection
-# then append value
-# get # of times name appears in collection
-# if 0 - append 1
-# if 1 - append 2
-# etc
-
-
+import datetime
+import argparse
 
 # common properties of Xml doc 
 class CommonXmlInfo:
@@ -217,27 +193,60 @@ class XmlCounts:
     def getNoteCountColumnNameFromType(self, type):
         return ColumnNames.NoteCountPrefix + type.name.capitalize()
 
+def parseArguments():    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--Source", help="Use specified source directory of XML files")
+    parser.add_argument("-f", "--Filename", help="Use specified filename for output CSV file")
+    args = getArguments(parser.parse_args())
+    return args
+
+def getArguments(args):
+    sourceDirectory = getSourceDirectory(args)
+    outputFilename = getOutputFilename(args)
+    return (sourceDirectory, outputFilename)
+
+def getSourceDirectory(args):
+    sourceDirectory = os.getcwd()
+    if args.Source:
+        sourceDirectory = args.Source
+    else:
+        printToConsole(f"No source specified, using {sourceDirectory}")
+    return sourceDirectory
+
+def getOutputFilename(args):
+    outputFilename = f"XMLCounts {getDateTimeNow()}.csv"
+    if args.Filename:
+        outputFilename = args.Filename
+        if not outputFilename.endswith(".csv"):
+            outputFilename = outputFilename + ".csv"
+    else:
+        printToConsole(f"No outupt filename specified, using {outputFilename}")
+    return outputFilename
+
 # gets file paths for all xml files in the working directory
 # return tuple<string, string>(fileName, filePath)
-def getXmlFileNamesAndPathsFromCurrentDirectory():
+def getXmlFileNamesAndPathsFromCurrentDirectory(sourceDirectory):
     xmlFileNamesAndPaths = []
-    currentDirectory = os.getcwd()
-    allFileNamesInWorkingDirectory = os.listdir(currentDirectory)
+    printToConsole(f"Getting XML files from {sourceDirectory}")
+    allFileNamesInWorkingDirectory = os.listdir(sourceDirectory)
     for fileName in allFileNamesInWorkingDirectory:
         if fileName.endswith(".xml"):
-            filePath = os.path.join(currentDirectory, fileName)
+            filePath = os.path.join(sourceDirectory, fileName)
             xmlFileNamesAndPaths.append((fileName, filePath))
+    printToConsole(f"Done getting XML files from {sourceDirectory}")
     return xmlFileNamesAndPaths
 
 # parses list of xml files into objects easier to work with 
 def parseXmlFiles(xmlFileInfos):
     xmlNamesAndTrees = []
+    printToConsole("Parsing found files")
     for xmlFileInfo in xmlFileInfos:
         fileName = xmlFileInfo[0]
         filePath = xmlFileInfo[1]
         xmlTree = et.parse(filePath)
         removeNamespaceFromTagNames(xmlTree)
         xmlNamesAndTrees.append((fileName, xmlTree))
+    printToConsole("Done parsing found files")
     return xmlNamesAndTrees
 
 # if xml file has namespace defined, it is included in tagnames on parse
@@ -254,6 +263,7 @@ def removeNamespaceFromTagNames(xmlTree):
 # gets div note counts by instance and type
 # returns all in a list per xml tree provided
 def getDivAndNoteCounts(xmlNamesAndTrees):
+    printToConsole("Getting all <div> and <note> element counts from all parsed XML files")
     xmlCountsList = []
     for xmlNameAndTree in xmlNamesAndTrees:
         fileName = xmlNameAndTree[0]
@@ -264,6 +274,7 @@ def getDivAndNoteCounts(xmlNamesAndTrees):
         commonXmlInfo = CommonXmlInfo(xmlTree, fileName)
         xmlCounts = XmlCounts(divs, commonXmlInfo, totalNotesCount)
         xmlCountsList.append(xmlCounts)
+    printToConsole("Done getting <div> and <note> counts")
     return xmlCountsList
 
 # gets div counts by type
@@ -301,14 +312,16 @@ def transformDivsToDivElementObjects(divs):
     return divElementObjects
 
 # writes all counts provided in xmlCountsList to csv file
-def writeCsv(xmlCountsList):
+def writeCsv(xmlCountsList, outputFilename):
+    printToConsole(f"Writing counts to file: {outputFilename}")
     headers = getHeadersForCsv(xmlCountsList)
-    with open('new_counts.csv', 'w', newline='') as csvFile:
+    with open(outputFilename, 'w', newline='') as csvFile:
         writer = csv.DictWriter(csvFile, fieldnames=headers)
         writer.writeheader();
         for xmlCounts in xmlCountsList:
             counts = xmlCounts.Counts
             writer.writerow(counts)
+    printToConsole(f"Done writing counts to file: {outputFilename}")
 
 def getHeadersForCsv(xmlCountsList):
     headers = [ColumnNames.FileName, ColumnNames.Title, ColumnNames.Date, ColumnNames.Volume, ColumnNames.Issue, ColumnNames.TotalDivCount, ColumnNames.TotalNoteCount]
@@ -319,22 +332,59 @@ def getHeadersForCsv(xmlCountsList):
     headers.extend(distinctValueHeaders)
     return headers
 
+# checks if directory contains any xml files
+def xmlFileListIsEmpty(listOfFiles):
+    fileCount = len(listOfFiles)
+    printToConsole(f"Files found: {fileCount}")
+    if fileCount == 0:
+        printToConsole("Directory contains no XML files, stopping process")
+        return True
+    return False
+
 # gets distinct list from simple list
 def groupList(lst):
     res = [(el, lst.count(el)) for el in lst]
     return OrderedDict(res)
 
+# prints to console with date
+def printToConsole(message):
+    print(f"{getDateTimeNow()} - {message}")
+
+# gets formatted datetime
+def getDateTimeNow():
+    return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+
+
+
 
 def main():
+    # get specified optional arguments if available
+    # otherwise use default values for sourceDirectory
+    # and outputFilename
+    arguments = parseArguments()
+    sourceDirectory = arguments[0]
+    outputFilename = arguments[1]
+
     # gets the file names and paths for all xml files in the directory and puts them in a list
     # returned list looks like below, where directory run against is "C:/exampleDirectory"
     # ["C:/exampleDirectory/examplefile1.xml", "C:/exampleDirectory/examplefile2.xml"]
-    xmlFileNamesAndPaths = getXmlFileNamesAndPathsFromCurrentDirectory() 
+    xmlFileNamesAndPaths = getXmlFileNamesAndPathsFromCurrentDirectory(sourceDirectory) 
+    
+    # if no files are in directory, do not continue
+    if xmlFileListIsEmpty(xmlFileNamesAndPaths):
+        return
 
     # parses the xml files and returns a list of tree objects
     # this allows more easy interaction with the contents of the files in code
     xmlNamesAndTrees = parseXmlFiles(xmlFileNamesAndPaths)
-    xmlCountsList = getDivAndNoteCounts(xmlNamesAndTrees)
-    writeCsv(xmlCountsList)
 
+    # calculates counts of div tags, note tags by total and type
+    xmlCountsList = getDivAndNoteCounts(xmlNamesAndTrees)
+
+    # writes xml counts to csv file
+    writeCsv(xmlCountsList, outputFilename)
+
+
+# executes program
 main()
