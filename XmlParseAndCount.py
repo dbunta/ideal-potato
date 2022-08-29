@@ -352,7 +352,7 @@ def printToConsole(message):
 
 # gets formatted datetime
 def getDateTimeNow():
-    return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    return datetime.datetime.now().strftime('%Y-%m-%d')
 
 
 
