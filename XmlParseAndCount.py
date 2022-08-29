@@ -315,7 +315,7 @@ def transformDivsToDivElementObjects(divs):
 def writeCsv(xmlCountsList, outputFilename):
     printToConsole(f"Writing counts to file: {outputFilename}")
     headers = getHeadersForCsv(xmlCountsList)
-    with open(outputFilename, 'w', newline='') as csvFile:
+    with open(outputFilename, 'w', newline='', encoding='utf8') as csvFile:
         writer = csv.DictWriter(csvFile, fieldnames=headers)
         writer.writeheader();
         for xmlCounts in xmlCountsList:
